@@ -55,6 +55,17 @@ class JobLocation:
         self.link = link
         self.name = name
 
+    def __is_valid_operand(self, other):
+        return (hasattr(other, 'link') and hasattr(other, 'name'))
+    
+    def __eq__(self, other):
+        if not self.__is_valid_operand(other):
+            return NotImplemented
+        return ((self.link.casefold(), self.name.casefold()) == (other.link.casefold(), other.name.casefold()))
+    
+    def __hash__(self):
+        return hash((self.link, self.name))
+    
     def __repr__(self):
         return str(self.__dict__)
 

@@ -6,10 +6,9 @@ import sys
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.jobprocessor import JobProcessor
+from src.jobprocessor import JobProcessor, RegexFilteringWeight, SalaryFilteringWeight
 from src.jobinfo import JobInfo, JobLocation
 from src.utility import getAbsPathRelativeToFile
-from src.constants import LOGGER_NAME
 
 class Test_JobProcessor(unittest.TestCase):
 
@@ -28,8 +27,8 @@ class Test_JobProcessor(unittest.TestCase):
         self.assertEqual(result[0].title, 'Nurse')
         self.assertEqual(result[0].company, 'Hospital')
         self.assertEqual(result[0].datePosted, date)
-        self.assertListEqual(list(map(vars, result[0].locations)), list(map(vars, [ JobLocation('New York, NY', 'http://example1.com'), JobLocation('Troy, MO', 'http://example2.com') ])))
-        self.assertListEqual(result[0].salaries, [ '$100,000 a year', '$90,000 a year' ])
+        self.assertCountEqual(result[0].locations, [ JobLocation('New York, NY', 'http://example1.com'), JobLocation('Troy, MO', 'http://example2.com') ])
+        self.assertCountEqual(result[0].salaries, [ '$100,000 a year', '$90,000 a year' ])
 
 
     __stoplistTestParams = [('Junior Developer', 'No Matter What Company', 'Stoplist entry found for job title = \'Junior Developer\' with reason: Bad pay'),
@@ -52,7 +51,7 @@ class Test_JobProcessor(unittest.TestCase):
 
 
     def test_NoStoplistIsLogged(self):
-        with self.assertLogs(LOGGER_NAME, level='WARNING') as cm:
+        with self.assertLogs('jobprocessor', level='WARNING') as cm:
             # arrange
             jobs = [ JobInfo('Nurse', 'Hospital', 'http://example.com', 'New York, NY', '', datetime.now()) ]
             nonexistentPath = getAbsPathRelativeToFile(__file__, 'resources', 'nonexistent.csv')
@@ -63,106 +62,42 @@ class Test_JobProcessor(unittest.TestCase):
 
             # assert
             self.assertEqual(cm.output, 
-                             ['WARNING:%s:Expected to find stoplist at "%s" but it was not there. Jobs will not be processed against stoplist.' % ( LOGGER_NAME, nonexistentPath )])  
+                             ['WARNING:jobprocessor:Expected to find stoplist at "%s" but it was not there. Jobs will not be processed against stoplist.' % nonexistentPath ])  
             
                
 
-    __undesirableWordsInTitleTestParams = [('Senior Java Developer', 'Undesirable word in job title: \'Java\''),
-                                           ('Junior C++ Developer', 'Undesirable word in job title: \'C++\'')]
-    
-    def test_UndesirableWordInTitleResultsInDerogatoryMark(self):
-        for title, expectedDerogatoryMark in self.__undesirableWordsInTitleTestParams:
-            with self.subTest():
-                with self.assertLogs(LOGGER_NAME, level='INFO'):
-                    # arrange
-                    jobs = [ JobInfo(title, 'Big Company', 'http://example.com', 'New York, NY', '', datetime.now()) ]
-                    jobProcessor = JobProcessor(badTitleRegexString = r'c\+\+|java')
+    def test_JobProcessorUsesFilteringWeights(self):
+            with self.assertLogs('jobprocessor', level='INFO'):
+                # arrange
+                jobs = [ JobInfo('Junior C++ Developer', 'Big Company', 'http://example.com', 'New York, NY', '$59,108 - $75,652 a year', datetime.now()) ]
+                jobProcessor = JobProcessor(filteringWeights=[RegexFilteringWeight('title', -5, r'c\+\+|java'), SalaryFilteringWeight(10, 75000)])
 
-                    # act
-                    result = jobProcessor.processJobs(jobs)
+                # act
+                result = jobProcessor.processJobs(jobs)
 
-                    # assert
-                    self.assertIn(expectedDerogatoryMark, result[0].derogatoryMarks)
-                    self.assertLess(result[0].weight, 0)
+                # assert
+                self.assertIn('Undesirable word in title: \'C++\'', result[0].derogatoryMarks)
+                self.assertEqual(result[0].weight, 5)
 
 
-    __undesirableWordsInCompanyTestParams = [('HireWrong', 'Undesirable word in company name: \'Hire\''),
-                                             ('LocalTalent', 'Undesirable word in company name: \'Talent\'')]
+    def test_JobProcessorSquashesIdenticalJobLocationsAndSalaries(self):
+        # arrange
+        date = datetime.now()
+        jobs = [ JobInfo('Nurse', 'Hospital', 'http://example1.com', 'New York, NY', '$100,000 a year', date),
+                 JobInfo('Nurse', 'Hospital', 'http://example1.com', 'New York, NY', '$100,000 a year', date) ]
+        jobProcessor = JobProcessor(getAbsPathRelativeToFile(__file__, 'resources', 'stoplist.csv'))
 
+        # act
+        result = jobProcessor.processJobs(jobs)
 
-    def test_UndesirableWordInCompanyResultsInDerogatoryMark(self):
-        for company, expectedDerogatoryMark in self.__undesirableWordsInCompanyTestParams:
-            with self.subTest():
-                with self.assertLogs(LOGGER_NAME, level='INFO'):
-                    # arrange
-                    jobs = [ JobInfo('Nurse', company, 'http://example.com', 'New York, NY', '', datetime.now()) ]
-                    jobProcessor = JobProcessor(badCompanyRegexString = r'hire|talent')
+        # assert
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].title, 'Nurse')
+        self.assertEqual(result[0].company, 'Hospital')
+        self.assertEqual(result[0].datePosted, date)
+        self.assertCountEqual(result[0].locations, [ JobLocation('New York, NY', 'http://example1.com') ])
+        self.assertCountEqual(result[0].salaries, [ '$100,000 a year' ])
 
-                    # act
-                    result = jobProcessor.processJobs(jobs)
-
-                    # assert
-                    self.assertIn(expectedDerogatoryMark, result[0].derogatoryMarks)
-                    self.assertLess(result[0].weight, 0)
-
-
-    __desirableWordsInTitleTestParams = [('Senior Java Developer'), ('Junior C++ Developer')]
-
-    def test_DesirableWordInTitleResultsInHigherWeight(self):
-        for title in self.__desirableWordsInTitleTestParams:
-            with self.subTest():
-                with self.assertLogs(LOGGER_NAME, level='INFO'):
-                    # arrange
-                    jobs = [ JobInfo(title, 'Big Company', 'http://example.com', 'New York, NY', '', datetime.now()) ]
-                    jobProcessor = JobProcessor(goodTitleRegexString = r'c\+\+|java')
-
-                    # act
-                    result = jobProcessor.processJobs(jobs)
-
-                    # assert
-                    self.assertGreater(result[0].weight, 0)
-
-
-    __desirableWordsInCompanyTestParams = [('HireWrong'), ('LocalTalent')]
-
-    def test_DesirableWordInCompanyResultsInHigherWeight(self):
-        for company in self.__desirableWordsInCompanyTestParams:
-            with self.subTest():
-                with self.assertLogs(LOGGER_NAME, level='INFO'):
-                    # arrange
-                    jobs = [ JobInfo('Nurse', company, 'http://example.com', 'New York, NY', '', datetime.now()) ]
-                    jobProcessor = JobProcessor(goodCompanyRegexString = r'hire|talent')
-
-                    # act
-                    result = jobProcessor.processJobs(jobs)
-
-                    # assert
-                    self.assertGreater(result[0].weight, 0)
-
-
-    def test_NeutralWordInTitleOrCompanyDoesNotAffectWeight(self):
-        with self.assertLogs(LOGGER_NAME, level='INFO'):
-            # arrange
-            jobs = [ JobInfo('Nurse', 'Hospital', 'http://example.com', 'New York, NY', '', datetime.now()) ]
-            jobProcessor = JobProcessor()
-
-            # act
-            result = jobProcessor.processJobs(jobs)
-
-            # assert
-            self.assertEqual(result[0].weight, 0)
-
-    def test_SalaryPresenceResultsInHigherWeight(self):
-        with self.assertLogs(LOGGER_NAME, level='INFO'):
-            # arrange
-            jobs = [ JobInfo('Nurse', 'Hospital', 'http://example.com', 'New York, NY', '$100,000 a year', datetime.now()) ]
-            jobProcessor = JobProcessor()
-
-            # act
-            result = jobProcessor.processJobs(jobs)
-
-            # assert
-            self.assertGreater(result[0].weight, 0)
 
 if __name__ == '__main__':
     unittest.main()

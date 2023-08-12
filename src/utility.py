@@ -22,3 +22,9 @@ def getEnumValueOrEmptyString(v: Enum) -> str:
     
 def getAbsPathRelativeToFile(filePath: str, *childPathParts: str) -> str:
     return os.path.join(os.path.dirname(os.path.abspath(filePath)), *childPathParts)
+
+def getSimpleModuleName(name: str) -> str:
+    if not name:
+        return ''
+    lastNameElement = name.split('.')[-1]
+    return lastNameElement.strip('_')

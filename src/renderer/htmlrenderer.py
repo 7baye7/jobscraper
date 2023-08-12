@@ -2,11 +2,11 @@
 
 import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring
-from logging import Logger, getLogger
+from logging import getLogger, Logger
 from enum import Enum
 
-from ..constants import GLASSDOOR_HOST, GLASSDOOR_SEARCH_PAGE, GLASSDOOR_SEARCH_PARAM, LOGGER_NAME
-from ..utility import buildUrl, getTrimmedStringValueOrEmptyString
+from ..constants import GLASSDOOR_HOST, GLASSDOOR_SEARCH_PAGE, GLASSDOOR_SEARCH_PARAM
+from ..utility import buildUrl, getTrimmedStringValueOrEmptyString, getSimpleModuleName
 from ..jobinfo import Job
 
 class HtmlRenderer:
@@ -15,9 +15,9 @@ class HtmlRenderer:
                        'h1,h2,h3,h4,h5,h6 {font-weight: 500;}summary {display: list-item;cursor: pointer;}ul {margin-top: 0;margin-bottom: 0.3em;}' +
                        'table {border-collapse: collapse;border-spacing: 0;width: 100%;border: 1px solid #ddd;margin-top: 1em;}' +
                        'th, td {text-align: left;padding: 0.5em;}tr:nth-child(odd) {background-color: #f2f2f2;}.limited-width {width: 25%;}')
-
+    
     def __init__(self):
-        self.__logger = getLogger(LOGGER_NAME)
+        self.__logger = getLogger(getSimpleModuleName(__name__))
 
     def __getSalary(self, groupedJob: Job) -> str:
         if not groupedJob.salaries:

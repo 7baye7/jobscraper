@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 CHROME_DRIVER_PATH = 'C:\Path\To\Your\chromedriver.exe'
+MAX_THREADS = 3
 LOG_CONFIG_FILE_NAME = 'logging.conf'
 STOPLIST_FILE_NAME = 'stoplist.csv'
 REPORT_FOLDER_NAME = 'reports'
@@ -20,9 +21,7 @@ GLASSDOOR_HOST = 'https://www.glassdoor.com'
 GLASSDOOR_SEARCH_PAGE = 'Search/results.htm'
 GLASSDOOR_SEARCH_PARAM = 'keyword'
 
-LOGGER_NAME = 'scrapeLogger'
 MIN_SECONDS_TO_SLEEP = 5
 MAX_SECONDS_TO_SLEEP = 15
 
 DEROGATORY_MARK_WEIGHT_HANDICAP = -10
-DESIRABLE_WORD_WEIGHT_BONUS = 2

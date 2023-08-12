@@ -62,5 +62,18 @@ class Test_Utility(unittest.TestCase):
                 # assert
                 self.assertEqual(result, expectedResult)
 
+    
+    __getSimpleModuleNameParams = [('complex.module.name', 'name'),
+                                    ('__main__', 'main'),
+                                    (None, '')]
+    def test_getSimpleModuleName(self):
+        for s, expectedResult in self.__getSimpleModuleNameParams:
+            with self.subTest():    
+                # act
+                result = getSimpleModuleName(s)
+
+                # assert
+                self.assertEqual(result, expectedResult)
+
 if __name__ == '__main__':
     unittest.main()

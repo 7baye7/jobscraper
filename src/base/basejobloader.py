@@ -1,21 +1,30 @@
 import abc
 import time
-from logging import Logger, getLogger
+from logging import getLogger, Logger
 from selenium.webdriver.chrome.webdriver import WebDriver
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
 from random import randrange
+from multiprocessing import Lock
 
-from ..constants import LOGGER_NAME, MIN_SECONDS_TO_SLEEP, MAX_SECONDS_TO_SLEEP
+from ..constants import MIN_SECONDS_TO_SLEEP, MAX_SECONDS_TO_SLEEP
 from ..jobinfo import JobInfo
 from .basesearchparams import BaseSearchParams
+from ..utility import getSimpleModuleName
 
 class BaseJobLoader(abc.ABC):
     _driver: WebDriver
+    _tabNumber: int
+    _lock: Lock
     _logger: Logger
-    def __init__(self, driver: WebDriver):
+
+    def __init__(self, driver: WebDriver, lock: Lock, tabNumber: int, loggerName: str):
         self._driver = driver
-        self._logger = getLogger(LOGGER_NAME)
+        self._tabNumber = tabNumber
+        self._lock = lock
+        self._logger = getLogger(getSimpleModuleName(loggerName))
+
+    def _switchToProperTab(self) -> None:
+        tabHandle = self._driver.window_handles[self._tabNumber]
+        self._driver.switch_to.window(tabHandle)
 
     def loadJobs(self, searchParams: BaseSearchParams, shouldSleep: bool = True) -> list[JobInfo]:
         try:
@@ -27,15 +36,19 @@ class BaseJobLoader(abc.ABC):
     @abc.abstractmethod        
     def _loadJobsInner(self, searchParams: BaseSearchParams, shouldSleep: bool) -> list[JobInfo]:
         pass
-
-    def _findElementWithoutException(self, by: By, selector: str):
-        try:
-            return self._driver.find_element(by, selector)
-        except NoSuchElementException:
-            return None
     
     def _sleep(self, shouldSleep: bool) -> None:
         if shouldSleep:
             secondsToSleep = randrange(MIN_SECONDS_TO_SLEEP, MAX_SECONDS_TO_SLEEP)
             self._logger.info('Sleeping for %d seconds...', secondsToSleep)
             time.sleep(secondsToSleep)
+
+    def _threadSafeGet(self, url: str | None) -> None:
+        with self._lock:
+                self._switchToProperTab()
+                self._driver.get(url)
+
+    def _threadSafeExecuteScript(self, script: any) -> any:
+        with self._lock:
+                self._switchToProperTab()
+                return self._driver.execute_script(script)

@@ -1,10 +1,10 @@
-import time
 from datetime import datetime
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import re
+from multiprocessing import Lock
 
 from ..constants import LINKEDIN_JOB_LOADING_LIMIT, LINKEDIN_PAGE_SIZE
 from ..base.basejobloader import BaseJobLoader
@@ -14,8 +14,8 @@ from ..base.basesearchparams import BaseSearchParams
 from .urlbuilder import UrlBuilder
 
 class JobLoader(BaseJobLoader):
-    def __init__(self, driver: WebDriver):
-        super().__init__(driver)
+    def __init__(self, driver: WebDriver, lock: Lock, tabNumber: int):
+        super().__init__(driver, lock, tabNumber, __name__)
 
     def __getElementTextOrEmptyString(self, element: WebElement) -> str:
         return getTrimmedStringValueOrEmptyString(element.text) if element else ''
@@ -55,15 +55,29 @@ class JobLoader(BaseJobLoader):
             self.__getElementTextOrEmptyString(salaryElement),
             datetime.now() if not postedDateString else datetime.strptime(postedDateString, '%Y-%m-%d')
         )
-    
-    def __getJobCountLimit(self, totalJobsFoundElement: WebElement) -> int:
+        
+    def __threadSafeGetJobCountLimit(self) -> int:
         try:
-            limit = min(int(totalJobsFoundElement.text), LINKEDIN_JOB_LOADING_LIMIT)
-            self._logger.info('Will attempt to load %d jobs', limit)
-            return limit
-        except:
-            self._logger.warning('Could not determine how many jobs to load, will attempt to load the configured maximum of %d jobs', LINKEDIN_JOB_LOADING_LIMIT)
-            return LINKEDIN_JOB_LOADING_LIMIT
+            with self._lock:
+                self._switchToProperTab()
+                totalJobsFoundElement = self._driver.find_element(By.CLASS_NAME, 'results-context-header__job-count')
+                return min(int(totalJobsFoundElement.text), LINKEDIN_JOB_LOADING_LIMIT)
+        except NoSuchElementException:
+            return 0
+        except ValueError:
+            self._logger.error('Error parsing job count')
+            return 0
+        
+    def __threadSafeGetJobElements(self) -> list[JobInfo]:
+        jobsOnPage = []
+        with self._lock:
+            self._switchToProperTab()
+            jobElements = self._driver.find_elements(By.CLASS_NAME, 'base-search-card--link')
+            for jobElement in jobElements:
+                job = self.__parseJob(jobElement)
+                jobsOnPage.append(job)
+            return jobsOnPage
+
 
     def _loadJobsInner(self, searchParams: BaseSearchParams, shouldSleep: bool = True) -> list[JobInfo]:
         results = []
@@ -73,22 +87,22 @@ class JobLoader(BaseJobLoader):
 
         while True: # do-while imitation
             self._logger.info('Loading jobs from url = "%s"...', url)
-            self._driver.get(url)
+            self._threadSafeGet(url)
 
             if startFrom == 0:
-                totalJobsFoundElement = self._findElementWithoutException(By.CLASS_NAME, 'results-context-header__job-count')
-                limit = self.__getJobCountLimit(totalJobsFoundElement)
+                limit = self.__threadSafeGetJobCountLimit()
+                if not limit:
+                    self._logger.warning('Could not determine how many jobs to load, will exit without loading jobs')
+                    break
+                self._logger.info('Will attempt to load %d jobs', limit)
 
-            jobElements = self._driver.find_elements(By.CLASS_NAME, 'base-search-card--link')
-            for jobElement in jobElements:
-                job = self.__parseJob(jobElement)
-                results.append(job)
+            jobsOnPage = self.__threadSafeGetJobElements()
+            results.extend(jobsOnPage)
 
             self._logger.info('Loaded %d out of %d jobs', len(results), limit)
 
-            if len(jobElements) < LINKEDIN_PAGE_SIZE:
-                self._logger.info('Loaded less jobs (%d) than configured page size (%d), looks like there are no more jobs, process finished', 
-                                  len(jobElements), LINKEDIN_PAGE_SIZE)
+            if len(jobsOnPage) == 0:
+                self._logger.info('Found zero jobs on page, looks like there are no more jobs, process finished')
                 break
             elif len(results) >= limit:
                 self._logger.info('Loaded equal to or more jobs (%d) than discovered limit (%d), won\'t be loading more, process finished', len(results), limit)

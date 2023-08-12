@@ -5,6 +5,7 @@ Scrapes jobs from Indeed.com and LinkedIn.com websites and produces a unified ht
 ## System Setup
 1. Install Python (3.11 and up)
 1. Install Selenium module for Python: `python -m pip install selenium`
+1. Install Undetected Chromedriver module for Python: `python -m pip install undetected-chromedriver`
 1. Install Chrome browser to standard location
 1. Check your Chrome browser version and install Chromedriver for your version of Chrome: [https://chromedriver.chromium.org/downloads](https://chromedriver.chromium.org/downloads)
 1. Go to [src/constants.py](src/constants.py), find `CHROME_DRIVER_PATH` and provide a path to your Chromedriver installation: `CHROME_DRIVER_PATH = 'C:\Path\To\Your\chromedriver.exe'`
@@ -75,13 +76,14 @@ Truck Driver,Company ABC,Pays below market
 
 * Keywords. If manually maintaning a stoplist seems too bothersome, there's another way to rank jobs: keywords. Unlike stoplist that can only lower rankings, keywords can either lower or raise them. Go to [main.py](main.py) and find this code:
 ```
-jobProcessor = JobProcessor(stopListPath = getAbsPathRelativeToFile(__file__, STOPLIST_FILE_NAME),
-                                    badTitleRegexString = r'diesel|loader',
-                                    badCompanyRegexString = r'recruit|hire|talent|partners',
-                                    goodTitleRegexString = r'class a|local',
-                                    goodCompanyRegexString = r'department')
+# setup job filtering/weighing after search
+weighingConditions = [RegexFilteringWeight(fieldNameToTest = 'title', weight = DEROGATORY_MARK_WEIGHT_HANDICAP, regex = r'diesel|loader'),
+                      RegexFilteringWeight(fieldNameToTest = 'company', weight = DEROGATORY_MARK_WEIGHT_HANDICAP, regex = r'recruit|hire|talent|partners'),
+                      RegexFilteringWeight(fieldNameToTest = 'title', weight = 2, regex = r'class a|local'),
+                      RegexFilteringWeight(fieldNameToTest = 'company', weight = 1, regex = r'department'),
+                      SalaryFilteringWeight(weight = 3, salaryMustBeNoLessThan = 80000)]
 ```
-With this, jobs like **Loader** posted by company Great **Recruit**ing will rank lower and receive derogatory marks showing that there were undesirable word in job title and company name, while **Class A** Driver posted by California **Department** of Corrections will rank high.
+With this, jobs like **Loader** posted by company Great **Recruit**ing will rank lower and receive derogatory marks showing that there were undesirable word in job title and company name, while **Class A** Driver posted by California **Department** of Corrections with salary higher than or equal to $80,000 will rank high.
 
 ### Final Report
 The script will make a folder named `reports` in the same folder as the main script. There will be up to 10 newest reports (this number can be changed in [src/constants.py](src/constants.py) by editing `KEEP_NEWEST_REPORTS_COUNT`). All earlier reports will be deleted.
@@ -117,9 +119,9 @@ A typical log file looks like this:
 Unit tests reside in the [test](test) folder. Here's the command for running them from the root folder and intended results:
 ```
 python -m unittest discover -s ./test -p *_test.py
-........................
+................................
 ----------------------------------------------------------------------
-Ran 24 tests in 2.962s
+Ran 32 tests in 32.856s
 
 OK
 ```

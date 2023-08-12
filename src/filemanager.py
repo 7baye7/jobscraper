@@ -4,9 +4,10 @@ import os
 import datetime
 import itertools
 from pathlib import Path
-from logging import Logger, getLogger
+from logging import getLogger, Logger
 
-from .constants import LOGGER_NAME
+from .utility import getSimpleModuleName
+
 
 class FileManager:
     __folderToManagePath: str
@@ -14,7 +15,7 @@ class FileManager:
 
     def __init__(self, folderToManage: str):
         self.__folderToManagePath = folderToManage
-        self.__logger = getLogger(LOGGER_NAME)
+        self.__logger = getLogger(getSimpleModuleName(__name__))
 
     def saveFile(self, fileName: str, extension: str, content: str) -> None:
         Path(self.__folderToManagePath).mkdir(parents=True, exist_ok=True)

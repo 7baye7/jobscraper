@@ -7,7 +7,7 @@ Scrapes jobs from Indeed.com and LinkedIn.com websites and produces a unified ht
 1. Install Selenium module for Python: `python -m pip install selenium`
 1. Install Undetected Chromedriver module for Python: `python -m pip install undetected-chromedriver`
 1. Install Chrome browser to standard location
-1. Check your Chrome browser version and install Chromedriver for your version of Chrome: [https://chromedriver.chromium.org/downloads](https://chromedriver.chromium.org/downloads)
+1. Check your Chrome browser version and install Chromedriver for your version of Chrome: [https://googlechromelabs.github.io/chrome-for-testing/](https://googlechromelabs.github.io/chrome-for-testing/)
 1. Go to [src/constants.py](src/constants.py), find `CHROME_DRIVER_PATH` and provide a path to your Chromedriver installation: `CHROME_DRIVER_PATH = 'C:\Path\To\Your\chromedriver.exe'`
 1. If you want to run Chrome with an actual window and see pages it visits, comment out `options.add_argument('--headless=new')` in [main.py](main.py)
 1. You are ready to run the script: `python main.py` from the main script folder.

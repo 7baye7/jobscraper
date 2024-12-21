@@ -12,6 +12,7 @@ import sys
 
 import src.indeed as Indeed
 import src.linkedin as Linkedin
+from src.jobloaderfactory import JobLoaderFactory
 from src.base.basejobloader import BaseJobLoader
 from src.constants import CHROME_DRIVER_PATH, STOPLIST_FILE_NAME, REPORT_FOLDER_NAME, KEEP_NEWEST_REPORTS_COUNT
 from src.constants import DEROGATORY_MARK_WEIGHT_HANDICAP, LOG_CONFIG_FILE_NAME, MAX_THREADS
@@ -57,10 +58,11 @@ if __name__ == "__main__":
         # setup multithreading
         m = Manager()
         lock = m.Lock()
+        factory = JobLoaderFactory()
         searchParams = [ indeedParams, linkedinParams ]
         for i in range(len(searchParams) - 1): # open tabs for Indeed and Linkedin in browser
             driver.execute_script("window.open('');")
-        loaders = [ Indeed.JobLoader(driver, lock, tabNumber = 0), Linkedin.JobLoader(driver, lock, tabNumber = 1) ]
+        loaders = [factory.createJobLoader(searchParams[i], driver, lock, i) for i in range(len(searchParams))]
         jobs = []
 
         # load jobs

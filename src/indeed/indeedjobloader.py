@@ -5,7 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from datetime import datetime
 import re
-from multiprocessing import Lock
+from multiprocessing.managers import AcquirerProxy
 
 from ..constants import INDEED_HOST, INDEED_JOB_LOADING_LIMIT
 from ..base.basejobloader import BaseJobLoader
@@ -14,7 +14,7 @@ from ..base.basesearchparams import BaseSearchParams
 from .urlbuilder import UrlBuilder
 
 class JobLoader(BaseJobLoader):
-    def __init__(self, driver: WebDriver, lock: Lock, tabNumber: int):
+    def __init__(self, driver: WebDriver, lock: AcquirerProxy, tabNumber: int):
         super().__init__(driver, lock, tabNumber, __name__)
         
     def __mapJsonJobToJobInfo(self, jsonJob: dict) -> JobInfo:

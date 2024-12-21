@@ -9,9 +9,9 @@ class UrlBuilder:
     @staticmethod
     def buildUrl(searchParams: SearchParams, extraParams: dict = {}) -> str:
         if isNullOrWhiteSpace(searchParams.query):
-            raise Exception('Query string cannot be null or white space.')
+            raise ValueError('Query string cannot be null or white space.')
         if isNullOrWhiteSpace(searchParams.location):
-            raise Exception('Location cannot be null or white space.')
+            raise ValueError('Location cannot be null or white space.')
         
         queryStringDict = { 
             'keywords': getTrimmedStringValueOrEmptyString(searchParams.query),

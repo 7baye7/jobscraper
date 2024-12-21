@@ -30,9 +30,16 @@ class Test_IndeedUrlBuilder(unittest.TestCase):
         p2.withinMiles = Indeed.Enums.WithinMiles.Within50Miles
         p2.salary = '$90,000'
 
+        pNoQuery = Indeed.SearchParams()
+
+        pNoLocation = Indeed.SearchParams()
+        pNoLocation.query = 'registered nurse'
+
         self.__urlBuilderParams = [(p1, {}, 'https://www.indeed.com/jobs?q=registered+nurse&l=Los+Angeles%2C+CA&fromage=1'),
                                     (p1, { 'start': 10 }, 'https://www.indeed.com/jobs?q=registered+nurse&l=Los+Angeles%2C+CA&fromage=1&start=10'),
                                     (p2, {}, 'https://www.indeed.com/jobs?q=registered+nurse+%2490%2C000&l=Los+Angeles%2C+CA&radius=50&sc=0bf%3Aexrec%28%29%2Ckf%3Aattr%28DSQF7%29explvl%28MID_LEVEL%29attr%28FCGTU%7CHFDVW%7CQJZM9%7CUTPWG%2COR%29attr%28MUDKG%29fcckey%281234567890abcdef%29%3B&rbl=Torrance%2C+CA&jlid=fa797dbf4932c2b4'),]
+        
+        self.__urlBuilderParamsWithValueError = [ pNoQuery, pNoLocation ]
 
     def test_urlBuilderBuildsUrl(self):
         for params, extraParams, expectedResult in self.__urlBuilderParams:
@@ -42,6 +49,12 @@ class Test_IndeedUrlBuilder(unittest.TestCase):
 
                 # assert
                 self.assertEqual(result, expectedResult)
+
+    def test_urlBuilderThrowsValueError(self):
+        for params in self.__urlBuilderParamsWithValueError:
+            with self.assertRaises(ValueError):
+                # act
+                Indeed.UrlBuilder.buildUrl(params)
 
 if __name__ == '__main__':
     unittest.main()

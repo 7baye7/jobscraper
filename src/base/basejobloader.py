@@ -3,7 +3,7 @@ import time
 from logging import getLogger, Logger
 from selenium.webdriver.chrome.webdriver import WebDriver
 from random import randrange
-from multiprocessing import Lock
+from multiprocessing.managers import AcquirerProxy
 
 from ..constants import MIN_SECONDS_TO_SLEEP, MAX_SECONDS_TO_SLEEP
 from ..jobinfo import JobInfo
@@ -13,10 +13,10 @@ from ..utility import getSimpleModuleName
 class BaseJobLoader(abc.ABC):
     _driver: WebDriver
     _tabNumber: int
-    _lock: Lock
+    _lock: AcquirerProxy
     _logger: Logger
 
-    def __init__(self, driver: WebDriver, lock: Lock, tabNumber: int, loggerName: str):
+    def __init__(self, driver: WebDriver, lock: AcquirerProxy, tabNumber: int, loggerName: str):
         self._driver = driver
         self._tabNumber = tabNumber
         self._lock = lock

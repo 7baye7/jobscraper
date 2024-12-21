@@ -27,9 +27,16 @@ class Test_LinkedinUrlBuilder(unittest.TestCase):
         p2.salary = Linkedin.Enums.Salary._100000
         p2.withinMiles = Linkedin.Enums.WithinMiles._50
 
+        pNoQuery = Linkedin.SearchParams()
+
+        pNoLocation = Linkedin.SearchParams()
+        pNoLocation.query = 'registered nurse'
+
         self.__urlBuilderParams = [(p1, {}, 'https://www.linkedin.com/jobs/search?keywords=registered+nurse&location=Los+Angeles%2C+CA&f_TPR=r2592000'),
                                     (p1, { 'startFrom': 25, 'partial': True }, 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=registered+nurse&location=Los+Angeles%2C+CA&f_TPR=r2592000&startFrom=25'),
                                     (p2, {}, 'https://www.linkedin.com/jobs/search?keywords=registered+nurse&location=Los+Angeles%2C+CA&f_TPR=r604800&f_SB2=4&f_E=2&f_WT=1&f_JT=C&distance=50'),]
+        
+        self.__urlBuilderParamsWithValueError = [ pNoQuery, pNoLocation ]
 
     def test_urlBuilderBuildsUrl(self):
         for params, extraParams, expectedResult in self.__urlBuilderParams:
@@ -39,6 +46,12 @@ class Test_LinkedinUrlBuilder(unittest.TestCase):
 
                 # assert
                 self.assertEqual(result, expectedResult)
+
+    def test_urlBuilderThrowsValueError(self):
+        for params in self.__urlBuilderParamsWithValueError:
+            with self.assertRaises(ValueError):
+                # act
+                Linkedin.UrlBuilder.buildUrl(params)
 
 if __name__ == '__main__':
     unittest.main()

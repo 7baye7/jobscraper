@@ -121,7 +121,7 @@ Unit tests reside in the [test](test) folder. Here's the command for running the
 python -m unittest discover -s ./test -p *_test.py
 ................................
 ----------------------------------------------------------------------
-Ran 32 tests in 32.856s
+Ran 36 tests in 3.108s
 
 OK
 ```
